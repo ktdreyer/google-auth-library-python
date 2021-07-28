@@ -20,6 +20,7 @@ import pytest
 
 from google.auth import _credentials_async as credentials
 from google.auth import _default_async as _default
+from google.auth import api_key
 from google.auth import app_engine
 from google.auth import compute_engine
 from google.auth import environment_vars
@@ -561,3 +562,28 @@ def test_default_no_warning_with_quota_project_id_for_user_creds(get_adc_path):
     get_adc_path.return_value = test_default.AUTHORIZED_USER_CLOUD_SDK_FILE
 
     credentials, project_id = _default.default_async(quota_project_id="project-foo")
+
+
+@mock.patch(
+    "google.auth._default_async._get_explicit_environ_credentials",
+    return_value=(MOCK_CREDENTIALS, mock.sentinel.project_id),
+    autospec=True,
+)
+def test_default_api_key(unused_get):
+    cred, project_id = _default.default_async(api_key="api-key")
+    assert isinstance(cred, api_key.Credentials)
+    assert cred.token == "api-key"
+    assert project_id is None
+
+
+@mock.patch(
+    "google.auth._default_async._get_explicit_environ_credentials",
+    return_value=(MOCK_CREDENTIALS, mock.sentinel.project_id),
+    autospec=True,
+)
+def test_default_api_key_from_env_var(unused_get):
+    with mock.patch.dict(os.environ, {environment_vars.API_KEY: "api-key"}):
+        cred, project_id = _default.default_async()
+        assert isinstance(cred, api_key.Credentials)
+        assert cred.token == "api-key"
+        assert project_id is None
